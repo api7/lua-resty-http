@@ -1030,6 +1030,18 @@ function _M.ssl_handshake(self, ...)
 end
 
 
+function _M.tls_handshake(self, opts)
+    local sock = self.sock
+    if not sock then
+        return nil, "not initialized"
+    end
+
+    self.ssl = true
+
+    return sock:tlshandshake(opts)
+end
+
+
 function _M.connect_proxy(self, proxy_uri, scheme, host, port, proxy_authorization)
     ngx_log(ngx_DEBUG, "Use of deprecated function `connect_proxy`")
 

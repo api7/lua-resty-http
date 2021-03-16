@@ -54,6 +54,7 @@ local function connect(self, options)
 
     -- ssl settings
     local ssl, ssl_server_name, ssl_verify, ssl_send_status_req
+    local ssl_cert_path, ssl_key_path
     if request_scheme == "https" then
         ssl = true
         ssl_server_name = options.ssl_server_name
@@ -62,6 +63,9 @@ local function connect(self, options)
         if options.ssl_verify == false then
             ssl_verify = false
         end
+
+        ssl_cert_path = options.ssl_cert_path
+        ssl_key_path = options.ssl_key_path
     end
 
     -- proxy related settings
@@ -154,6 +158,8 @@ local function connect(self, options)
                    .. ":" .. tostring(request_port)
                    .. ":" .. tostring(ssl)
                    .. ":" .. (ssl_server_name or "")
+                   .. ":" .. (ssl_cert_path or "")
+                   .. ":" .. (ssl_key_path or "")
                    .. ":" .. tostring(ssl_verify)
                    .. ":" .. (proxy_uri or "")
                    .. ":" .. (request_scheme == "https" and proxy_authorization or "")
@@ -213,7 +219,20 @@ local function connect(self, options)
 
     -- Now do the ssl handshake
     if ssl and sock:getreusedtimes() == 0 then
-        local ok, err = self:ssl_handshake(nil, ssl_server_name, ssl_verify, ssl_send_status_req)
+        local ok, err
+        if not sock.tlshandshake then
+            ok, err = self:ssl_handshake(nil, ssl_server_name, ssl_verify, ssl_send_status_req)
+        else
+            local opts = {
+                server_name = ssl_server_name,
+                verify = ssl_verify,
+                ocsp_status_req = ssl_send_status_req,
+                client_cert_path = ssl_cert_path,
+                client_priv_key_path = ssl_key_path,
+            }
+            ok, err = self:tls_handshake(opts)
+        end
+
         if not ok then
             self:close()
             return nil, err

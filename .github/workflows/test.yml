@@ -4,6 +4,8 @@ on:
   push:
     paths-ignore: # Skip if only docs are updated
         - '*.md'
+  pull_request:
+    branches: [master]
 
 jobs:
   luacheck:
@@ -58,7 +60,8 @@ jobs:
     - name: Run tests
       env:
         TEST_COVERAGE: '1'
-      run: /usr/bin/prove -I../test-nginx/lib -r t/
+      run: /usr/bin/prove -I../test-nginx/lib t/*.t
+      # TODO: run test with apisix-openresty
 
     - name: Coverage
       run: |
