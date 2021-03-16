@@ -66,6 +66,12 @@ local function connect(self, options)
 
         ssl_cert_path = options.ssl_cert_path
         ssl_key_path = options.ssl_key_path
+
+        if ssl_cert_path and not ssl_key_path then
+            return nil, "missing 'ssl_key_path' when 'ssl_cert_path' is given"
+        elseif not ssl_cert_path and ssl_key_path then
+            return nil, "missing 'ssl_cert_path' when 'ssl_key_path' is given"
+        end
     end
 
     -- proxy related settings

@@ -175,6 +175,8 @@ The options table has the following fields:
 * `ssl_verify`: option as per [OpenResty docs](https://github.com/openresty/lua-nginx-module#tcpsocksslhandshake), except that it defaults to `true`.
 * `ssl_server_name`: option as per [OpenResty docs](https://github.com/openresty/lua-nginx-module#tcpsocksslhandshake)
 * `ssl_send_status_req`: option as per [OpenResty docs](https://github.com/openresty/lua-nginx-module#tcpsocksslhandshake)
+* `ssl_cert_path`: the path of certificate used in client certificate verification
+* `ssl_key_path`: the path of key used in client certificate verification. The key should match the given certificate.
 
 ## set\_timeout
 
