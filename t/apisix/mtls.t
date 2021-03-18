@@ -162,3 +162,28 @@ GET /lua
 GET /lua
 --- error_log
 set client private key failed
+
+
+
+=== TEST 6: no cert
+--- config
+    location /lua {
+        content_by_lua_block {
+            local http = require "resty.http"
+            local httpc = http.new()
+
+            local res, err = httpc:request_uri("https://127.0.0.1:8081", {
+                ssl_verify = false,
+            })
+            if not res then
+                ngx.log(ngx.ERR, err)
+            else
+                ngx.exit(res.status)
+            end
+        }
+    }
+--- request
+GET /lua
+--- error_code: 400
+--- no_error_log
+[error]
