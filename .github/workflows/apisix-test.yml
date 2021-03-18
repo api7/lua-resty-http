@@ -1,0 +1,39 @@
+name: APISIX-Test
+
+on:
+  push:
+    paths-ignore: # Skip if only docs are updated
+        - '*.md'
+  pull_request:
+    branches: [master]
+
+jobs:
+  run_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install deps
+      run: |
+        wget https://raw.githubusercontent.com/api7/apisix-build-tools/master/build-apisix-openresty.sh
+        chmod +x build-apisix-openresty.sh
+        ./build-apisix-openresty.sh latest
+
+    - name: Install CPAN
+      run: |
+        curl -s -L http://xrl.us/cpanm > ../cpanm
+        chmod +x ../cpanm
+        sudo mv ../cpanm /bin/cpanm
+
+    - name: Install Test::Nginx
+      run: |
+        sudo cpanm -q -n Test::Nginx
+        git clone --depth 1 https://github.com/iresty/test-nginx.git ../test-nginx
+
+
+    - name: Run tests
+      run: |
+        export OR_PREFIX="/usr/local/openresty-debug"
+        export PATH=$OR_PREFIX/nginx/sbin:$OR_PREFIX/luajit/bin:$OR_PREFIX/bin:$PATH
+        echo "$PWD"
+        /usr/bin/prove -I../test-nginx/lib -r t/
