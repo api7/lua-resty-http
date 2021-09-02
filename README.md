@@ -93,7 +93,7 @@ local httpc = require("resty.http").new()
 -- First establish a connection
 local ok, err = httpc:connect({
     scheme = "https",
-    host = "127.0.0.1"
+    host = "127.0.0.1",
     port = 8080,
 })
 if not ok then
@@ -241,7 +241,7 @@ The `params` table expects the following fields:
 * `path`: The path string. Defaults to `/`.
 * `query`: The query string, presented as either a literal string or Lua table..
 * `headers`: A table of request headers.
-* `body`: The request body as a string, or an iterator function (see [get\_client\_body\_reader](#get_client_body_reader)).
+* `body`: The request body as a string, a table of strings, or an iterator function yielding strings until nil when exhausted. Note that you must specify a `Content-Length` for the request body, or specify `Transfer-Encoding: chunked` and have your function implement the encoding. See also: [get\_client\_body\_reader](#get_client_body_reader)).
 
 When the request is successful, `res` will contain the following fields:
 
@@ -257,7 +257,7 @@ When the request is successful, `res` will contain the following fields:
 
 `syntax: res, err = httpc:request_uri(uri, params)`
 
-The single-shot interface (see [usage](#Usage)). Since this method performs an entire end-to-end request, options specified in the `params` can include anything found in both [connect](#connect) and [request](#request) documented above. Note also that fields in `params` will override relevant components of the `uri` if specified.
+The single-shot interface (see [usage](#Usage)). Since this method performs an entire end-to-end request, options specified in the `params` can include anything found in both [connect](#connect) and [request](#request) documented above. Note also that fields `path`, and `query`, in `params` will override relevant components of the `uri` if specified (`scheme`, `host`, and `port` will always be taken from the `uri`).
 
 There are 3 additional parameters for controlling keepalives:
 

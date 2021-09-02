@@ -175,14 +175,17 @@ set client private key failed
 
 
 
-=== TEST 7: verify
+=== TEST 7: verify SNI
 --- stream_server_config
     lua_ssl_trusted_certificate ../../cert/mtls_ca.crt;
     content_by_lua_block {
         local http = require "resty.http"
         local httpc = http.new()
 
+        -- Since https://github.com/ledgetech/lua-resty-http/pull/237,
+        -- lua-resty-http will send the host part from uri as sni
         local res, err = httpc:request_uri("https://127.0.0.1:8081", {
+            ssl_server_name = "client.apisix.dev",
             ssl_verify = true,
             ssl_cert_path = "t/cert/mtls_client.crt",
             ssl_key_path = "t/cert/mtls_client.key",
@@ -200,7 +203,7 @@ set client private key failed
 
 
 
-=== TEST 8: SNI
+=== TEST 8: SNI mismatch
 --- stream_server_config
     lua_ssl_trusted_certificate ../../cert/mtls_ca.crt;
     content_by_lua_block {

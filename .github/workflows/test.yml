@@ -1,11 +1,6 @@
 name: Test
 
-on:
-  push:
-    paths-ignore: # Skip if only docs are updated
-        - '*.md'
-  pull_request:
-    branches: [master]
+on: [push, pull_request]
 
 jobs:
   luacheck:
