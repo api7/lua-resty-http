@@ -25,7 +25,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: set user-agent with http header
+=== TEST 1: default user case (without use_default_user_agent)
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -39,8 +39,7 @@ location = /a {
             headers = {
                 ["X_Foo"] = "bar",
                 ["User-Agent"] = "test_user_agent",
-            },
-            use_default_user_agent = false
+            }
         }
 
         ngx.status = res.status
@@ -65,7 +64,7 @@ bar
 
 
 
-=== TEST 2: set user-agent with http header and set use_default_user_agent with true
+=== TEST 2: empty user-agent and set use_default_user_agent with true
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -78,7 +77,6 @@ location = /a {
             path = "/b",
             headers = {
                 ["X_Foo"] = "bar",
-                ["User-Agent"] = "test_user_agent",
             },
             use_default_user_agent = true
         }
@@ -97,15 +95,15 @@ location = /b {
 }
 --- request
 GET /a
---- response_body
-test_user_agent
+--- response_body_like
+lua-resty-http.*
 bar
 --- no_error_log
 [error]
 
 
 
-=== TEST 3: set emtpy user-agent with http header and set use_default_user_agent with false
+=== TEST 3: empty user-agent and set use_default_user_agent with false
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -144,7 +142,7 @@ bar
 
 
 
-=== TEST 4: set emtpy user-agent with http header and set use_default_user_agent with true
+=== TEST 4: set user-agent and set use_default_user_agent with true
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -156,6 +154,7 @@ location = /a {
         local res, err = httpc:request{
             path = "/b",
             headers = {
+                ["User-Agent"] = "test_user_agent",
                 ["X_Foo"] = "bar",
             },
             use_default_user_agent = true
@@ -176,14 +175,14 @@ location = /b {
 --- request
 GET /a
 --- response_body_like
-lua-resty-http.*
+test_user_agent
 bar
 --- no_error_log
 [error]
 
 
 
-=== TEST 5: set emtpy user-agent with http header and set use_default_user_agent with true
+=== TEST 5: set user-agent and set use_default_user_agent with false
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -195,8 +194,10 @@ location = /a {
         local res, err = httpc:request{
             path = "/b",
             headers = {
+                ["User-Agent"] = "test_user_agent",
                 ["X_Foo"] = "bar",
-            }
+            },
+            use_default_user_agent = false
         }
 
         ngx.status = res.status
@@ -214,7 +215,76 @@ location = /b {
 --- request
 GET /a
 --- response_body_like
-lua-resty-http.*
+test_user_agent
 bar
 --- no_error_log
 [error]
+
+
+
+=== TEST 6: empty set use_default_user_agent with true
+--- http_config eval: $::HttpConfig
+--- config
+location = /a {
+    content_by_lua_block {
+        local httpc = require("resty.http").new()
+        assert(httpc:connect("127.0.0.1", ngx.var.server_port),
+            "connect should return positively")
+
+        local res, err = httpc:request{
+            path = "/b",
+            headers = {},
+            use_default_user_agent = true
+        }
+
+        ngx.status = res.status
+        ngx.print(res:read_body())
+
+        httpc:close()
+    }
+}
+location = /b {
+    content_by_lua_block {
+        ngx.say(ngx.req.get_headers()["User-Agent"])
+    }
+}
+--- request
+GET /a
+--- response_body_like
+lua-resty-http.*
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: empty set use_default_user_agent with false
+--- http_config eval: $::HttpConfig
+--- config
+location = /a {
+    content_by_lua_block {
+        local httpc = require("resty.http").new()
+        assert(httpc:connect("127.0.0.1", ngx.var.server_port),
+            "connect should return positively")
+
+        local res, err = httpc:request{
+            path = "/b",
+            headers = {},
+            use_default_user_agent = false
+        }
+
+        ngx.status = res.status
+        ngx.print(res:read_body())
+
+        httpc:close()
+    }
+}
+location = /b {
+    content_by_lua_block {
+        ngx.say(ngx.req.get_headers()["User-Agent"])
+    }
+}
+--- request
+GET /a
+--- error_code: 500
+--- error_log eval
+[qr/invalid value \(boolean\)/]
