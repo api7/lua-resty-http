@@ -180,3 +180,41 @@ lua-resty-http.*
 bar
 --- no_error_log
 [error]
+
+
+
+=== TEST 5: set emtpy user-agent with http header and set use_default_user_agent with true
+--- http_config eval: $::HttpConfig
+--- config
+location = /a {
+    content_by_lua_block {
+        local httpc = require("resty.http").new()
+        assert(httpc:connect("127.0.0.1", ngx.var.server_port),
+            "connect should return positively")
+
+        local res, err = httpc:request{
+            path = "/b",
+            headers = {
+                ["X_Foo"] = "bar",
+            }
+        }
+
+        ngx.status = res.status
+        ngx.print(res:read_body())
+
+        httpc:close()
+    }
+}
+location = /b {
+    content_by_lua_block {
+        ngx.say(ngx.req.get_headers()["User-Agent"])
+        ngx.say(ngx.req.get_headers(nil, true)["X_Foo"])
+    }
+}
+--- request
+GET /a
+--- response_body_like
+lua-resty-http.*
+bar
+--- no_error_log
+[error]

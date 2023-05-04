@@ -726,7 +726,7 @@ function _M.send_request(self, params)
             headers["Host"] = self.host
         end
     end
-    if use_default_user_agent and not headers["User-Agent"] then
+    if use_default_user_agent ~= false and not headers["User-Agent"] then
         headers["User-Agent"] = _M._USER_AGENT
     end
     if params.version == 1.0 and not headers["Connection"] then
