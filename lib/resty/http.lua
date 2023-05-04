@@ -656,6 +656,7 @@ function _M.send_request(self, params)
 
     local sock = self.sock
     local body = params.body
+    local use_default_user_agent = params.use_default_user_agent
     local headers = http_headers.new()
 
     -- We assign one-by-one so that the metatable can handle case insensitivity
@@ -725,7 +726,7 @@ function _M.send_request(self, params)
             headers["Host"] = self.host
         end
     end
-    if not headers["User-Agent"] then
+    if use_default_user_agent and not headers["User-Agent"] then
         headers["User-Agent"] = _M._USER_AGENT
     end
     if params.version == 1.0 and not headers["Connection"] then
