@@ -285,6 +285,5 @@ location = /b {
 }
 --- request
 GET /a
---- error_code: 500
---- error_log eval
-[qr/invalid value \(boolean\)/]
+--- response_body
+nil

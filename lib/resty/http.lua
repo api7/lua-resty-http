@@ -329,7 +329,7 @@ local function _format_request(self, params)
         -- Pre-allocate slots for minimum headers and carriage return.
         true,
         true,
-        true,
+        "",
     }
     local c = 7 -- req table index it's faster to do this inline vs table.insert
 
