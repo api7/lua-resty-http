@@ -257,7 +257,7 @@ lua-resty-http.*
 
 
 
-=== TEST 7: empty http header
+=== TEST 7: empty http header and set use_default_user_agent with false
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
