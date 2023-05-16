@@ -222,7 +222,7 @@ bar
 
 
 
-=== TEST 6: empty set use_default_user_agent with true
+=== TEST 6: set use_default_user_agent with true
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -257,7 +257,7 @@ lua-resty-http.*
 
 
 
-=== TEST 7: empty set use_default_user_agent with false
+=== TEST 7: empty http header
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
