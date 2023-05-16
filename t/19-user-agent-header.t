@@ -222,7 +222,7 @@ bar
 
 
 
-=== TEST 6: set use_default_user_agent with true
+=== TEST 6: empty http header and set use_default_user_agent with true
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
