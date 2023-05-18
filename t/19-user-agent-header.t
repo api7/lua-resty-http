@@ -222,7 +222,7 @@ bar
 
 
 
-=== TEST 6: empty set use_default_user_agent with true
+=== TEST 6: empty http header and set use_default_user_agent with true
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -257,7 +257,7 @@ lua-resty-http.*
 
 
 
-=== TEST 7: empty set use_default_user_agent with false
+=== TEST 7: empty http header and set use_default_user_agent with false
 --- http_config eval: $::HttpConfig
 --- config
 location = /a {
@@ -285,6 +285,5 @@ location = /b {
 }
 --- request
 GET /a
---- error_code: 500
---- error_log eval
-[qr/invalid value \(boolean\)/]
+--- response_body
+nil
