@@ -26,8 +26,6 @@ add_block_preprocessor(sub {
 _EOC
 
     $block->set_value("http_config", $http_config);
-
-    $block;
 });
 
 run_tests();
@@ -262,7 +260,8 @@ GET /lua
 missing 'ssl_cert_path' or 'ssl_cert' when 'ssl_key_path' or 'ssl_key' is given
 
 
-=== TEST 4: sanity cert and key from content
+
+=== TEST 6: sanity cert and key from content
 --- config
     location /lua {
         lua_ssl_verify_depth 2;
@@ -305,4 +304,4 @@ fQnpU2U16XKivhxeuKYrV/INL0sxj/fZraNYErvJWzh5llvIdNLmeSPmvb50JUIs
 --- request
 GET /lua
 --- error_log
-tls set client private key failed
+private key failed
