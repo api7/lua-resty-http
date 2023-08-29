@@ -54,7 +54,7 @@ local function connect(self, options)
 
     -- ssl settings
     local ssl, ssl_server_name, ssl_verify, ssl_send_status_req
-    local ssl_cert_path, ssl_key_path
+    local ssl_cert_path, ssl_key_path, ssl_cert, ssl_key
     if request_scheme == "https" then
         ssl = true
         ssl_server_name = options.ssl_server_name
@@ -66,11 +66,19 @@ local function connect(self, options)
 
         ssl_cert_path = options.ssl_cert_path
         ssl_key_path = options.ssl_key_path
+        ssl_cert = options.ssl_cert
+        ssl_key = options.ssl_key
 
-        if ssl_cert_path and not ssl_key_path then
-            return nil, "missing 'ssl_key_path' when 'ssl_cert_path' is given"
-        elseif not ssl_cert_path and ssl_key_path then
-            return nil, "missing 'ssl_cert_path' when 'ssl_key_path' is given"
+        if ssl_cert and ssl_cert_path then
+            return nil, "cannot specify both 'ssl_cert' and 'ssl_cert_path'"
+        elseif ssl_key and ssl_key_path then
+            return nil, "cannot specify both 'ssl_key' and 'ssl_key_path'"
+        end
+
+        if (ssl_cert_path or ssl_cert) and (not ssl_key_path and not ssl_key) then
+            return nil, "missing 'ssl_key_path' or 'ssl_key' when 'ssl_cert_path' or 'ssl_cert' is given"
+        elseif (not ssl_cert_path and not ssl_cert) and (ssl_key_path or ssl_key) then
+            return nil, "missing 'ssl_cert_path' or 'ssl_cert' when 'ssl_key_path' or 'ssl_key' is given"
         end
     end
 
@@ -235,6 +243,8 @@ local function connect(self, options)
                 ocsp_status_req = ssl_send_status_req,
                 client_cert_path = ssl_cert_path,
                 client_priv_key_path = ssl_key_path,
+                client_cert = ssl_cert,
+                client_priv_key = ssl_key,
             }
             ok, err = self:tls_handshake(opts)
         end
