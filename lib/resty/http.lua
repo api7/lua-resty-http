@@ -449,11 +449,14 @@ local function _chunked_body_reader(sock, default_chunk_size)
                     remaining = 0
                 end
             else -- This is a fresh chunk
-
+                ::receive_again::
                 -- Receive the chunk size
                 local str, err = sock:receive("*l")
                 if not str then
                     co_yield(nil, err)
+                    if err == "timeout" then
+                        goto receive_again
+                    end
                 end
 
                 length = tonumber(str, 16)
