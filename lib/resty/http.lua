@@ -10,6 +10,7 @@ local str_lower = string.lower
 local str_upper = string.upper
 local str_find = string.find
 local str_sub = string.sub
+local str_byte = string.byte
 local tbl_concat = table.concat
 local tbl_insert = table.insert
 local ngx_encode_args = ngx.encode_args
@@ -127,6 +128,25 @@ local DEFAULT_PARAMS = {
 
 
 local DEBUG = false
+
+
+local function validate_chars(value)
+    if type(value) ~= "string" then
+        return true
+    end
+
+    for i = 1, #value do
+        local b = str_byte(value, i, i)
+        -- control characters
+        if b < 32 or b == 127 then
+            -- 9 is horizontal tab (\t) which is allowed in header values
+            if b ~= 9 then
+                return false
+            end
+        end
+    end
+    return true
+end
 
 
 function _M.new(_)
@@ -311,6 +331,11 @@ local function _format_request(self, params)
     local version = params.version
     local headers = params.headers or {}
 
+    local path = params.path
+    if not validate_chars(path) then
+        return nil, "invalid characters found in path"
+    end
+
     local query = params.query or ""
     if type(query) == "table" then
         query = "?" .. ngx_encode_args(query)
@@ -318,12 +343,16 @@ local function _format_request(self, params)
         query = "?" .. query
     end
 
+    if not validate_chars(query) then
+        return nil, "invalid characters found in query"
+    end
+
     -- Initialize request
     local req = {
         str_upper(params.method),
         " ",
         self.path_prefix or "",
-        params.path,
+        path,
         query,
         HTTP[version],
         -- Pre-allocate slots for minimum headers and carriage return.
@@ -336,14 +365,25 @@ local function _format_request(self, params)
     -- Append headers
     for key, values in pairs(headers) do
         key = tostring(key)
+        if not validate_chars(key) then
+            return nil, "invalid characters found in header key"
+        end
 
         if type(values) == "table" then
             for _, value in pairs(values) do
+                value = tostring(value)
+                if not validate_chars(value) then
+                    return nil, "invalid characters found in header value"
+                end
                 req[c] = key .. ": " .. tostring(value) .. "\r\n"
                 c = c + 1
             end
 
         else
+            values = tostring(values)
+            if not validate_chars(values) then
+                return nil, "invalid characters found in header value"
+            end
             req[c] = key .. ": " .. tostring(values) .. "\r\n"
             c = c + 1
         end
@@ -736,7 +776,11 @@ function _M.send_request(self, params)
     params.headers = headers
 
     -- Format and send request
-    local req = _format_request(self, params)
+    local req, err = _format_request(self, params)
+    if not req then
+        return nil, err
+    end
+
     if DEBUG then ngx_log(ngx_DEBUG, "\n", req) end
     local bytes, err = sock:send(req)
 
