@@ -55,7 +55,9 @@ jobs:
     - name: Run tests
       env:
         TEST_COVERAGE: '1'
-      run: /usr/bin/prove -I../test-nginx/lib t/*.t
+      run: |
+        export PATH=$OPENRESTY_PREFIX/nginx/sbin:$OPENRESTY_PREFIX/luajit/bin:$PATH
+        /usr/bin/prove -I../test-nginx/lib t/*.t
 
     - name: Coverage
       run: |
