@@ -9,7 +9,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install LuaRocks
       run: |
-        sudo apt -y install lua5.1
+        sudo apt -y install lua5.1 liblua5.1-0-dev
         curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
     - run: luarocks install luacheck
     - run: luacheck lib
