@@ -32,7 +32,6 @@ jobs:
         sudo apt-get -y install openresty
         sudo apt-get -y install curl perl bash wget git libperl-dev libarchive-tools
         curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
-        ln -s /usr/bin/bsdtar /usr/bin/tar
 
     - name: Install CPAN
       run: sudo apt install -y cpanminus
