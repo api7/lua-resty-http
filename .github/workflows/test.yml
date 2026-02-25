@@ -11,7 +11,7 @@ jobs:
       run: |
         sudo apt -y install lua5.1 liblua5.1-0-dev
         curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
-    - run: luarocks install luacheck
+    - run: sudo luarocks install luacheck
     - run: luacheck lib
 
   run_tests:
