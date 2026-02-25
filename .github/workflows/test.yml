@@ -7,10 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: leafo/gh-actions-lua@v8
-      with:
-        luaVersion: "luajit-openresty"
-    - uses: leafo/gh-actions-luarocks@v4
+    - name: Install LuaRocks
+      run: curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
     - run: luarocks install luacheck
     - run: luacheck lib
 
@@ -34,10 +32,10 @@ jobs:
         ln -s /usr/bin/bsdtar /usr/bin/tar
 
     - name: Install CPAN
-      run: curl -s -L http://xrl.us/cpanm > /bin/cpanm && chmod +x /bin/cpanm
+      run: sudo apt install -y cpanminus
 
     - name: Cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cpan
