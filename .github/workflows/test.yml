@@ -22,19 +22,20 @@ jobs:
           - 1.19.3.1
 
     runs-on: ubuntu-latest
-    container:
-      image: openresty/openresty:${{ matrix.openresty_version }}-alpine-fat
-      # --init runs tinit as PID 1 and prevents the 'WARNING: killing the child process' spam from the test suite
-      options: --init
 
     steps:
     - name: Install deps
       run: |
-        apk add --no-cache curl perl bash wget git perl-dev libarchive-tools
+        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+        sudo apt-get update
+        sudo apt-get -y install openresty
+        sudo apt-get -y install curl perl bash wget git perl-dev libarchive-tools
+        curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
         ln -s /usr/bin/bsdtar /usr/bin/tar
 
     - name: Install CPAN
-      run: apt install -y cpanminus
+      run: sudo apt install -y cpanminus
 
     - name: Cache
       uses: actions/cache@v4
@@ -45,10 +46,10 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.openresty_version }}-cache
 
     - name: Install Test::Nginx
-      run: cpanm -q -n Test::Nginx
+      run: sudo cpanm -q -n Test::Nginx
 
     - name: Install Luacov
-      run: luarocks install luacov
+      run: sudo luarocks install luacov
 
     - uses: actions/checkout@v2
 
