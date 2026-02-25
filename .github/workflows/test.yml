@@ -8,7 +8,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install LuaRocks
-      run: curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
+      run: |
+        apt install lua5.1
+        curl -fsSL https://raw.githubusercontent.com/apache/apisix/master/utils/linux-install-luarocks.sh | bash
     - run: luarocks install luacheck
     - run: luacheck lib
 
