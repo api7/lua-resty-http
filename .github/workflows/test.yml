@@ -56,7 +56,7 @@ jobs:
       env:
         TEST_COVERAGE: '1'
       run: |
-        export PATH=$OPENRESTY_PREFIX/nginx/sbin:$OPENRESTY_PREFIX/luajit/bin:$PATH
+        export PATH=/usr/local/openresty/nginx/sbin:/usr/local/openresty/luajit/bin:$PATH
         /usr/bin/prove -I../test-nginx/lib t/*.t
 
     - name: Coverage
