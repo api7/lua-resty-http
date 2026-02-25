@@ -34,7 +34,7 @@ jobs:
         ln -s /usr/bin/bsdtar /usr/bin/tar
 
     - name: Install CPAN
-      run: sudo apt install -y cpanminus
+      run: apt install -y cpanminus
 
     - name: Cache
       uses: actions/cache@v4
