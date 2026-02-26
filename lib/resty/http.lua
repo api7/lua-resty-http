@@ -129,7 +129,10 @@ local DEFAULT_PARAMS = {
 
 local DEBUG = false
 
--- ideated from: https://github.com/hyperium/http/blob/60fbf319500def124cabb21c8fe8533cf209ce58/src/uri/path.rs#L484-L540
+-- ideated from:
+-- luacheck: push max code line length 300
+-- https://github.com/hyperium/http/blob/60fbf319500def124cabb21c8fe8533cf209ce58/src/uri/path.rs#L484-L540
+-- luacheck: pop
 local is_allowed_path = {}
 for b = 0, 255 do
     is_allowed_path[b] = (b == 0x21 -- !
@@ -148,9 +151,8 @@ end
 local function validate_path(value)
     if type(value) ~= "string" then return false end
 
-    local sb = string.byte
     for i = 1, #value do
-        if not is_allowed_path[sb(value, i)] then
+        if not is_allowed_path[str_byte(value, i)] then
             return false
         end
     end
@@ -167,9 +169,8 @@ is_allowed_query[0x3F] = true
 local function validate_query(value)
     if type(value) ~= "string" then return false end
 
-    local sb = string.byte
     for i = 1, #value do
-        if not is_allowed_query[sb(value, i)] then
+        if not is_allowed_query[str_byte(value, i)] then
             return false
         end
     end
@@ -182,15 +183,14 @@ local is_token_char = {}
 local tokens = "!#$%&'*+-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^_`abcdefghijklmnopqrstuvwxyz|~"
 
 for i = 1, #tokens do
-    is_token_char[string.byte(tokens, i)] = true
+    is_token_char[str_byte(tokens, i)] = true
 end
 
 local function validate_header_name(name)
     if type(name) ~= "string" or name == "" then return false end
 
-    local sb = string.byte
     for i = 1, #name do
-        if not is_token_char[sb(name, i)] then
+        if not is_token_char[str_byte(name, i)] then
             return false
         end
     end
@@ -215,9 +215,8 @@ end
 
 local function validate_header_value(value)
     if type(value) ~= "string" then return false end
-    local sb = string.byte
     for i = 1, #value do
-        if not is_valid_header_value_char[sb(value, i)] then
+        if not is_valid_header_value_char[str_byte(value, i)] then
             return false
         end
     end
