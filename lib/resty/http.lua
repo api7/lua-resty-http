@@ -129,25 +129,100 @@ local DEFAULT_PARAMS = {
 
 local DEBUG = false
 
+-- ideated from: https://github.com/hyperium/http/blob/60fbf319500def124cabb21c8fe8533cf209ce58/src/uri/path.rs#L484-L540
+local is_allowed_path = {}
+for b = 0, 255 do
+    is_allowed_path[b] = (b == 0x21 -- !
+        or (b >= 0x24 and b <= 0x3B) -- $, %, &, ', (, ), *, +, ,, -, ., /, 0-9, :, ;
+        or b == 0x3D -- =
+        or (b >= 0x40 and b <= 0x5F) -- @, A-Z, [, \, ], ^, _
+        or (b >= 0x61 and b <= 0x7A) -- a-z
+        or b == 0x7C -- |
+        or b == 0x7E -- ~
+        or b == 34   -- "
+        or b == 123  -- {
+        or b == 125  -- }
+        or b >= 127) -- UTF-8 / DEL
+end
 
-local function validate_chars(value)
-    if type(value) ~= "string" then
-        return true
-    end
+local function validate_path(value)
+    if type(value) ~= "string" then return false end
 
+    local sb = string.byte
     for i = 1, #value do
-        local b = str_byte(value, i, i)
-        -- control characters
-        if b < 32 or b == 127 then
-            -- 9 is horizontal tab (\t) which is allowed in header values
-            if b ~= 9 then
-                return false
-            end
+        if not is_allowed_path[sb(value, i)] then
+            return false
         end
     end
     return true
 end
 
+local is_allowed_query = {}
+for b = 0, 255 do
+    is_allowed_query[b] = is_allowed_path[b]
+end
+-- Query logic matches Path logic, but adds 0x3F (?)
+is_allowed_query[0x3F] = true
+
+local function validate_query(value)
+    if type(value) ~= "string" then return false end
+
+    local sb = string.byte
+    for i = 1, #value do
+        if not is_allowed_query[sb(value, i)] then
+            return false
+        end
+    end
+    return true
+end
+
+-- Pre-compute the Token table (based on Go's httpguts.isTokenTable)
+-- https://github.com/golang/net/blob/60b3f6f8ce12def82ae597aebe9031753198f74d/http/httpguts/httplex.go#L15-L93
+local is_token_char = {}
+local tokens = "!#$%&'*+-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^_`abcdefghijklmnopqrstuvwxyz|~"
+
+for i = 1, #tokens do
+    is_token_char[string.byte(tokens, i)] = true
+end
+
+local function validate_header_name(name)
+    if type(name) ~= "string" or name == "" then return false end
+
+    local sb = string.byte
+    for i = 1, #name do
+        if not is_token_char[sb(name, i)] then
+            return false
+        end
+    end
+    return true
+end
+
+-- Pre-compute the Header Value table
+local is_valid_header_value_char = {}
+for b = 0, 255 do
+    -- Logic: Not a CTL, OR is LWS (Space 32 or Tab 9)
+    -- isCTL: b < 32 or b == 127
+    -- isLWS: b == 32 or b == 9
+    local is_ctl = (b < 32 or b == 127)
+    local is_lws = (b == 32 or b == 9)
+
+    if not is_ctl or is_lws then
+        is_valid_header_value_char[b] = true
+    else
+        is_valid_header_value_char[b] = false
+    end
+end
+
+local function validate_header_value(value)
+    if type(value) ~= "string" then return false end
+    local sb = string.byte
+    for i = 1, #value do
+        if not is_valid_header_value_char[sb(value, i)] then
+            return false
+        end
+    end
+    return true
+end
 
 function _M.new(_)
     local sock, err = ngx_socket_tcp()
@@ -332,7 +407,7 @@ local function _format_request(self, params)
     local headers = params.headers or {}
 
     local path = params.path
-    if not validate_chars(path) then
+    if not validate_path(path) then
         return nil, "invalid characters found in path"
     end
 
@@ -343,7 +418,7 @@ local function _format_request(self, params)
         query = "?" .. query
     end
 
-    if not validate_chars(query) then
+    if not validate_query(query) then
         return nil, "invalid characters found in query"
     end
 
@@ -365,14 +440,14 @@ local function _format_request(self, params)
     -- Append headers
     for key, values in pairs(headers) do
         key = tostring(key)
-        if not validate_chars(key) then
+        if not validate_header_name(key) then
             return nil, "invalid characters found in header key"
         end
 
         if type(values) == "table" then
             for _, value in pairs(values) do
                 value = tostring(value)
-                if not validate_chars(value) then
+                if not validate_header_value(value) then
                     return nil, "invalid characters found in header value"
                 end
                 req[c] = key .. ": " .. tostring(value) .. "\r\n"
@@ -381,7 +456,7 @@ local function _format_request(self, params)
 
         else
             values = tostring(values)
-            if not validate_chars(values) then
+            if not validate_header_value(values) then
                 return nil, "invalid characters found in header value"
             end
             req[c] = key .. ": " .. tostring(values) .. "\r\n"
