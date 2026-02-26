@@ -10,6 +10,7 @@ local str_lower = string.lower
 local str_upper = string.upper
 local str_find = string.find
 local str_sub = string.sub
+local str_byte = string.byte
 local tbl_concat = table.concat
 local tbl_insert = table.insert
 local ngx_encode_args = ngx.encode_args
@@ -128,6 +129,99 @@ local DEFAULT_PARAMS = {
 
 local DEBUG = false
 
+-- ideated from:
+-- luacheck: push max code line length 300
+-- https://github.com/hyperium/http/blob/60fbf319500def124cabb21c8fe8533cf209ce58/src/uri/path.rs#L484-L540
+-- luacheck: pop
+local is_allowed_path = {}
+for b = 0, 255 do
+    is_allowed_path[b] = (b == 0x21 -- !
+        or (b >= 0x24 and b <= 0x3B) -- $, %, &, ', (, ), *, +, ,, -, ., /, 0-9, :, ;
+        or b == 0x3D -- =
+        or (b >= 0x40 and b <= 0x5F) -- @, A-Z, [, \, ], ^, _
+        or (b >= 0x61 and b <= 0x7A) -- a-z
+        or b == 0x7C -- |
+        or b == 0x7E -- ~
+        or b == 34   -- "
+        or b == 123  -- {
+        or b == 125  -- }
+        or b >= 127) -- UTF-8 / DEL
+end
+
+local function validate_path(value)
+    if type(value) ~= "string" then return false end
+
+    for i = 1, #value do
+        if not is_allowed_path[str_byte(value, i)] then
+            return false
+        end
+    end
+    return true
+end
+
+local is_allowed_query = {}
+for b = 0, 255 do
+    is_allowed_query[b] = is_allowed_path[b]
+end
+-- Query logic matches Path logic, but adds 0x3F (?)
+is_allowed_query[0x3F] = true
+
+local function validate_query(value)
+    if type(value) ~= "string" then return false end
+
+    for i = 1, #value do
+        if not is_allowed_query[str_byte(value, i)] then
+            return false
+        end
+    end
+    return true
+end
+
+-- Pre-compute the Token table (based on Go's httpguts.isTokenTable)
+-- https://github.com/golang/net/blob/60b3f6f8ce12def82ae597aebe9031753198f74d/http/httpguts/httplex.go#L15-L93
+local is_token_char = {}
+local tokens = "!#$%&'*+-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^_`abcdefghijklmnopqrstuvwxyz|~"
+
+for i = 1, #tokens do
+    is_token_char[str_byte(tokens, i)] = true
+end
+
+local function validate_header_name(name)
+    if type(name) ~= "string" or name == "" then return false end
+
+    for i = 1, #name do
+        if not is_token_char[str_byte(name, i)] then
+            return false
+        end
+    end
+    return true
+end
+
+-- Pre-compute the Header Value table
+local is_valid_header_value_char = {}
+for b = 0, 255 do
+    -- Logic: Not a CTL, OR is LWS (Space 32 or Tab 9)
+    -- isCTL: b < 32 or b == 127
+    -- isLWS: b == 32 or b == 9
+    local is_ctl = (b < 32 or b == 127)
+    local is_lws = (b == 32 or b == 9)
+
+    if not is_ctl or is_lws then
+        is_valid_header_value_char[b] = true
+    else
+        is_valid_header_value_char[b] = false
+    end
+end
+
+local function validate_header_value(value)
+    if type(value) ~= "string" then return false end
+    for i = 1, #value do
+        if not is_valid_header_value_char[str_byte(value, i)] then
+            return false
+        end
+    end
+    return true
+end
 
 function _M.new(_)
     local sock, err = ngx_socket_tcp()
@@ -311,6 +405,11 @@ local function _format_request(self, params)
     local version = params.version
     local headers = params.headers or {}
 
+    local path = params.path
+    if not validate_path(path) then
+        return nil, "invalid characters found in path"
+    end
+
     local query = params.query or ""
     if type(query) == "table" then
         query = "?" .. ngx_encode_args(query)
@@ -318,12 +417,16 @@ local function _format_request(self, params)
         query = "?" .. query
     end
 
+    if not validate_query(query) then
+        return nil, "invalid characters found in query"
+    end
+
     -- Initialize request
     local req = {
         str_upper(params.method),
         " ",
         self.path_prefix or "",
-        params.path,
+        path,
         query,
         HTTP[version],
         -- Pre-allocate slots for minimum headers and carriage return.
@@ -336,14 +439,25 @@ local function _format_request(self, params)
     -- Append headers
     for key, values in pairs(headers) do
         key = tostring(key)
+        if not validate_header_name(key) then
+            return nil, "invalid characters found in header key"
+        end
 
         if type(values) == "table" then
             for _, value in pairs(values) do
+                value = tostring(value)
+                if not validate_header_value(value) then
+                    return nil, "invalid characters found in header value"
+                end
                 req[c] = key .. ": " .. tostring(value) .. "\r\n"
                 c = c + 1
             end
 
         else
+            values = tostring(values)
+            if not validate_header_value(values) then
+                return nil, "invalid characters found in header value"
+            end
             req[c] = key .. ": " .. tostring(values) .. "\r\n"
             c = c + 1
         end
@@ -736,7 +850,11 @@ function _M.send_request(self, params)
     params.headers = headers
 
     -- Format and send request
-    local req = _format_request(self, params)
+    local req, err = _format_request(self, params)
+    if not req then
+        return nil, err
+    end
+
     if DEBUG then ngx_log(ngx_DEBUG, "\n", req) end
     local bytes, err = sock:send(req)
 

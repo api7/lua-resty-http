@@ -21,9 +21,7 @@ jobs:
 
     - name: Install CPAN
       run: |
-        curl -s -L http://xrl.us/cpanm > ../cpanm
-        chmod +x ../cpanm
-        sudo mv ../cpanm /bin/cpanm
+        sudo apt install -y cpanminus
 
     - name: Install Test::Nginx
       run: |
