@@ -322,3 +322,58 @@ foobar
 --- no_error_log
 [error]
 [warn]
+
+
+=== TEST 7: Chunked using read_body method with timeout.
+--- http_config
+    lua_socket_log_errors off;
+--- config
+    location = /a {
+        content_by_lua '
+            local http = require "resty.http"
+            local httpc = http.new()
+            httpc:set_timeout(100) -- 100ms
+            httpc:connect({
+                scheme = "http",
+                host = "127.0.0.1",
+                port = ngx.var.server_port
+            })
+
+            local res, err = httpc:request{
+                path = "/b"
+            }
+
+            local body, err, chunks = res:read_body()
+            if err == "timeout" then
+                body, err = res:read_body()
+            end
+            body = chunks .. (body or "")
+
+            ngx.say(#body)
+            httpc:close()
+        ';
+    }
+    location = /b {
+        content_by_lua '
+            local len = 32768
+            local t = {}
+            for i=1,len do
+                t[i] = 0
+            end
+            ngx.print(table.concat(t))
+            ngx.sleep(0.2)  -- 200ms
+            local len = 32768
+            local t = {}
+            for i=1,len do
+                t[i] = 0
+            end
+            ngx.print(table.concat(t))
+        ';
+    }
+--- request
+GET /a
+--- response_body
+65536
+--- no_error_log
+[error]
+[warn]
