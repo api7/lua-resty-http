@@ -614,7 +614,7 @@ local function _body_reader(sock, content_length, default_chunk_size)
             -- HTTP 1.0 with no length will close connection, so read chunks to the end.
             repeat
                 local str, err, partial = sock:receive(max_chunk_size)
-                if not str and err == "closed" then
+                if not str then
                     co_yield(partial, err)
                 end
 
