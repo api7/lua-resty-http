@@ -318,10 +318,14 @@ nil
 
             local chunks = {}
             local size = 8192
+            local read_err
             repeat
-                local chunk = res.body_reader(size)
+                local chunk, err = res.body_reader(size)
                 if chunk then
                     table.insert(chunks, chunk)
+                end
+                if err then
+                    read_err = err
                 end
                 size = size + size
             until not chunk
@@ -329,6 +333,7 @@ nil
             local body = table.concat(chunks)
             ngx.say(#body)
             ngx.say(#chunks)
+            ngx.say(read_err)
 
             httpc:close()
         ';
@@ -360,9 +365,54 @@ GET /a
 --- response_body
 32769
 3
+closed
 --- no_error_log
 [error]
 [warn]
+
+
+=== TEST 4c: No-length streaming body reader propagates timeout errors.
+--- http_config eval: $::HttpConfig
+--- config
+    location = /a {
+        content_by_lua '
+            local http = require "resty.http"
+            local httpc = http.new()
+            httpc:set_timeout(100)
+            httpc:connect({
+                scheme = "http",
+                host = "127.0.0.1",
+                port = ngx.var.server_port
+            })
+
+            local res, err = httpc:request{
+                path = "/b",
+                headers = {
+                    ["Connection"] = "close",
+                },
+            }
+
+            local chunk, read_err = res.body_reader(8192)
+            ngx.say(chunk)
+            ngx.say(read_err)
+
+            httpc:close()
+        ';
+    }
+    location = /b {
+        chunked_transfer_encoding off;
+        content_by_lua '
+            ngx.print("partial")
+            ngx.flush(true)
+            ngx.sleep(0.3)
+            ngx.print("body")
+        ';
+    }
+--- request
+GET /a
+--- response_body
+partial
+timeout
 
 
 === TEST 5: Chunked streaming body reader with max chunk size returns the right content length.
